@@ -10,15 +10,22 @@ public class GerenciadorJogoTCC : MonoBehaviour
     public GameObject painelInicio;
     public GameObject painelDialogo;
     public GameObject painelEscolhas;
-    public GameObject painelReflexao;
     public GameObject painelFinal;
 
-    [Header("Tela Inicial")]
+    [Header("Início")]
     public TMP_InputField campoNome;
+    public TMP_Dropdown dropdownGenero;
+    public Button botaoComecar;
+    public Button botaoFaculdade;
+    public Button botaoTrabalho;
+    public Button botaoGrupoAmigos;
 
     [Header("Diálogo")]
-    public TMP_Text textoPersonagem;
+    public TMP_Text textoAmbiente;
+    public TMP_Text textoNomePersonagem;
     public TMP_Text textoFala;
+    public TMP_Text textoRespostaJogador;
+    public Button botaoContinuar;
 
     [Header("Escolhas")]
     public Button botaoEscolha1;
@@ -28,436 +35,595 @@ public class GerenciadorJogoTCC : MonoBehaviour
     public TMP_Text textoEscolha2;
     public TMP_Text textoEscolha3;
 
-    [Header("Reflexão")]
-    public TMP_Text textoReflexao;
-    public Button botaoContinuarReflexao;
-
     [Header("Final")]
     public TMP_Text textoFinal;
     public Button botaoReiniciar;
 
+    [Header("Visual Novel")]
+    public ControladorCenaVN controladorCena;
+
+    [Header("Aparências do Jogador")]
+    public List<AparenciaJogador> aparenciasFemininas = new List<AparenciaJogador>();
+    public List<AparenciaJogador> aparenciasMasculinas = new List<AparenciaJogador>();
+    public List<AparenciaJogador> aparenciasNaoDefinidas = new List<AparenciaJogador>();
+
+    [Header("Personagens por Ambiente")]
+    public List<DadosPersonagem> personagensFaculdade = new List<DadosPersonagem>();
+    public List<DadosPersonagem> personagensTrabalho = new List<DadosPersonagem>();
+    public List<DadosPersonagem> personagensGrupoAmigos = new List<DadosPersonagem>();
+
     private string nomeJogador = "Jogador";
-    private int indiceCena = 0;
+    private GeneroJogador generoJogador;
+    private TipoAmbiente ambienteAtual = TipoAmbiente.Nenhum;
 
-    private int empatia = 0;
-    private int comunicacao = 0;
-    private int controleEmocional = 0;
-    private int lideranca = 0;
+    private AparenciaJogador aparenciaAtualJogador;
+    private Emocao emocaoAtualJogador = Emocao.Neutro;
 
-    private string ambienteEscolhido = "";
-    private Dictionary<string, int> relacoes = new Dictionary<string, int>();
+    private int empatia;
+    private int comunicacao;
+    private int controleEmocional;
+    private int lideranca;
 
-    private List<CenaDialogo> cenas = new List<CenaDialogo>();
+    private List<NoDialogoVN> nos = new List<NoDialogoVN>();
+    private int indiceNoAtual = 0;
+
+    private List<DadosPersonagem> personagensAtivos = new List<DadosPersonagem>();
 
     void Start()
     {
         painelInicio.SetActive(true);
         painelDialogo.SetActive(false);
         painelEscolhas.SetActive(false);
-        painelReflexao.SetActive(false);
         painelFinal.SetActive(false);
 
-        botaoContinuarReflexao.onClick.AddListener(ContinuarDepoisReflexao);
+        botaoComecar.onClick.AddListener(PrepararInicio);
+        botaoFaculdade.onClick.AddListener(() => SelecionarAmbiente(TipoAmbiente.Faculdade));
+        botaoTrabalho.onClick.AddListener(() => SelecionarAmbiente(TipoAmbiente.Trabalho));
+        botaoGrupoAmigos.onClick.AddListener(() => SelecionarAmbiente(TipoAmbiente.GrupoDeAmigos));
+
+        botaoContinuar.onClick.AddListener(ContinuarDialogoSimples);
         botaoReiniciar.onClick.AddListener(ReiniciarJogo);
     }
 
-    public void ComecarJogo()
+    void PrepararInicio()
     {
         nomeJogador = campoNome.text.Trim();
 
         if (string.IsNullOrEmpty(nomeJogador))
             nomeJogador = "Jogador";
 
+        generoJogador = (GeneroJogador)dropdownGenero.value;
+        aparenciaAtualJogador = SortearAparenciaJogador(generoJogador);
+        emocaoAtualJogador = Emocao.Neutro;
+    }
+
+    AparenciaJogador SortearAparenciaJogador(GeneroJogador genero)
+    {
+        List<AparenciaJogador> lista = null;
+
+        switch (genero)
+        {
+            case GeneroJogador.Feminino:
+                lista = aparenciasFemininas;
+                break;
+            case GeneroJogador.Masculino:
+                lista = aparenciasMasculinas;
+                break;
+            case GeneroJogador.NaoDefinido:
+                lista = aparenciasNaoDefinidas;
+                break;
+        }
+
+        if (lista == null || lista.Count == 0)
+            return null;
+
+        return lista[Random.Range(0, lista.Count)];
+    }
+
+    void SelecionarAmbiente(TipoAmbiente ambiente)
+    {
+        ambienteAtual = ambiente;
+        personagensAtivos = ObterListaDoAmbiente(ambiente);
+
+        if (personagensAtivos.Count < 6)
+        {
+            Debug.LogError("Cada ambiente precisa ter exatamente 6 personagens configurados.");
+            return;
+        }
+
         painelInicio.SetActive(false);
         painelDialogo.SetActive(true);
-        painelEscolhas.SetActive(true);
 
-        MontarCenasIntroducao();
-        MostrarCenaAtual();
+        textoAmbiente.text = "Ambiente: " + ambienteAtual.ToString();
+
+        MontarRoteiroBase();
+        MostrarNoAtual();
     }
 
-    void MontarCenasIntroducao()
+    List<DadosPersonagem> ObterListaDoAmbiente(TipoAmbiente ambiente)
     {
-        cenas.Clear();
-        indiceCena = 0;
-
-        cenas.Add(new CenaDialogo
+        switch (ambiente)
         {
-            personagem = "Sofia",
-            fala = "Olá " + nomeJogador + ", me chamo Sofia. Estou aqui para guiar você no desenvolvimento das suas soft skills, algo muito importante para sua vida pessoal e profissional.",
-            escolhas = new List<Escolha>()
+            case TipoAmbiente.Faculdade:
+                return personagensFaculdade;
+            case TipoAmbiente.Trabalho:
+                return personagensTrabalho;
+            case TipoAmbiente.GrupoDeAmigos:
+                return personagensGrupoAmigos;
+        }
+
+        return new List<DadosPersonagem>();
+    }
+
+    void MontarRoteiroBase()
+    {
+        nos.Clear();
+        indiceNoAtual = 0;
+
+        DadosPersonagem p1 = personagensAtivos[0];
+        DadosPersonagem p2 = personagensAtivos[1];
+        DadosPersonagem p3 = personagensAtivos[2];
+        DadosPersonagem p4 = personagensAtivos[3];
+        DadosPersonagem p5 = personagensAtivos[4];
+        DadosPersonagem p6 = personagensAtivos[5];
+
+        nos.Add(new NoDialogoVN
+        {
+            id = 0,
+            tipoNo = TipoNoDialogo.DialogoSimples,
+            personagemFalando = p1,
+            mostrarEsquerda = true,
+            mostrarCentro = true,
+            mostrarDireita = true,
+            personagemEsquerda = p1,
+            personagemCentro = p2,
+            personagemDireita = p3,
+            emocaoEsquerda = Emocao.Neutro,
+            emocaoCentro = Emocao.Neutro,
+            emocaoDireita = Emocao.Feliz,
+            falasVariaveis = GerarFalasPorPersonalidade(p1, "apresentacao"),
+            respostasJogadorVariaveis = new List<string>
             {
-                new Escolha
-                {
-                    texto = "Continuar",
-                    proximaCena = 1
-                },
-                new Escolha
-                {
-                    texto = "Quero entender melhor",
-                    proximaCena = 1
-                },
-                new Escolha
-                {
-                    texto = "Vamos começar",
-                    proximaCena = 1
-                }
-            }
+                "Oi, prazer em conhecer vocês.",
+                "Olá, espero me dar bem com todo mundo.",
+                "Tudo bem, estou tentando me adaptar."
+            },
+            proximoNoSimples = 1
         });
 
-        cenas.Add(new CenaDialogo
+        nos.Add(new NoDialogoVN
         {
-            personagem = "Sofia",
-            fala = "Antes de começarmos, escolha o ambiente onde sua história irá começar.",
-            escolhas = new List<Escolha>()
+            id = 1,
+            tipoNo = TipoNoDialogo.DialogoSimples,
+            personagemFalando = p4,
+            mostrarEsquerda = true,
+            mostrarCentro = true,
+            mostrarDireita = true,
+            personagemEsquerda = p4,
+            personagemCentro = p5,
+            personagemDireita = p6,
+            emocaoEsquerda = Emocao.Feliz,
+            emocaoCentro = Emocao.Neutro,
+            emocaoDireita = Emocao.Neutro,
+            falasVariaveis = GerarFalasPorPersonalidade(p4, "convivio"),
+            respostasJogadorVariaveis = new List<string>
             {
-                new Escolha
-                {
-                    texto = "Empresa",
-                    proximaCena = 2,
-                    ambiente = "Empresa"
-                },
-                new Escolha
-                {
-                    texto = "Faculdade",
-                    proximaCena = 2,
-                    ambiente = "Faculdade"
-                },
-                new Escolha
-                {
-                    texto = "Projeto em grupo",
-                    proximaCena = 2,
-                    ambiente = "Projeto em Grupo"
-                }
-            }
+                "Entendi, vou observar melhor como tudo funciona.",
+                "Parece que cada pessoa aqui tem um jeito diferente.",
+                "Quero aprender a lidar bem com todos."
+            },
+            proximoNoSimples = 2
         });
 
-        cenas.Add(new CenaDialogo
+        nos.Add(new NoDialogoVN
         {
-            personagem = "Sofia",
-            fala = "Ótimo. Agora vamos ver como você reage em situações do cotidiano.",
-            escolhas = new List<Escolha>()
+            id = 2,
+            tipoNo = TipoNoDialogo.Escolha,
+            personagemFalando = p2,
+            mostrarEsquerda = true,
+            mostrarCentro = true,
+            mostrarDireita = true,
+            personagemEsquerda = p1,
+            personagemCentro = p2,
+            personagemDireita = p3,
+            emocaoEsquerda = Emocao.Neutro,
+            emocaoCentro = Emocao.Raiva,
+            emocaoDireita = Emocao.Neutro,
+            falasVariaveis = GerarFalasPorPersonalidade(p2, "conflito"),
+            opcoes = new List<OpcaoEscolha>
             {
-                new Escolha
+                new OpcaoEscolha
                 {
-                    texto = "Continuar",
-                    proximaCena = 3
-                },
-                new Escolha
-                {
-                    texto = "Estou pronto",
-                    proximaCena = 3
-                },
-                new Escolha
-                {
-                    texto = "Vamos lá",
-                    proximaCena = 3
-                }
-            }
-        });
-
-        cenas.Add(new CenaDialogo
-        {
-            personagem = "Colega",
-            fala = "Hoje não é um bom dia. Já estou cansado e ainda preciso lidar com isso tudo...",
-            escolhas = new List<Escolha>()
-            {
-                new Escolha
-                {
-                    texto = "Ignorar as provocações",
-                    proximaCena = 4,
-                    deltaControle = 1,
-                    deltaComunicacao = -1,
-                    deltaRelacao = -1,
-                    nomePersonagemRelacao = "Colega"
-                },
-                new Escolha
-                {
-                    texto = "Responder de forma agressiva",
-                    proximaCena = 4,
-                    deltaEmpatia = -2,
-                    deltaControle = -2,
-                    deltaRelacao = -2,
-                    nomePersonagemRelacao = "Colega"
-                },
-                new Escolha
-                {
-                    texto = "Perguntar com calma o motivo",
-                    proximaCena = 4,
+                    textoOpcao = "Responder com calma e tentar entender",
+                    respostaJogador = "Calma, eu quero entender o que aconteceu.",
                     deltaEmpatia = 2,
                     deltaComunicacao = 2,
-                    deltaControle = 1,
-                    deltaRelacao = 2,
-                    nomePersonagemRelacao = "Colega"
+                    deltaControleEmocional = 1,
+                    emocaoJogadorAposEscolha = Emocao.Neutro,
+                    emocaoPersonagemAposEscolha = Emocao.Neutro,
+                    proximoNo = 3
+                },
+                new OpcaoEscolha
+                {
+                    textoOpcao = "Responder de forma neutra e curta",
+                    respostaJogador = "Tudo bem, vamos seguir.",
+                    deltaComunicacao = 1,
+                    deltaControleEmocional = 1,
+                    emocaoJogadorAposEscolha = Emocao.Neutro,
+                    emocaoPersonagemAposEscolha = Emocao.Neutro,
+                    proximoNo = 3
+                },
+                new OpcaoEscolha
+                {
+                    textoOpcao = "Responder de forma agressiva",
+                    respostaJogador = "Você não precisa falar assim comigo.",
+                    deltaEmpatia = -2,
+                    deltaControleEmocional = -2,
+                    emocaoJogadorAposEscolha = Emocao.Raiva,
+                    emocaoPersonagemAposEscolha = Emocao.Raiva,
+                    proximoNo = 3
                 }
             }
         });
 
-        cenas.Add(new CenaDialogo
+        nos.Add(new NoDialogoVN
         {
-            personagem = "Sofia",
-            fala = "Agora vamos refletir sobre sua escolha.",
-            reflexao = "Por que você escolheu agir dessa forma? Você faria o mesmo na vida real?",
-            mostrarReflexao = true,
-            proximaCenaAposReflexao = 5
+            id = 3,
+            tipoNo = TipoNoDialogo.DialogoSimples,
+            personagemFalando = p3,
+            mostrarEsquerda = true,
+            mostrarCentro = true,
+            mostrarDireita = true,
+            personagemEsquerda = p1,
+            personagemCentro = p2,
+            personagemDireita = p3,
+            emocaoEsquerda = Emocao.Neutro,
+            emocaoCentro = Emocao.Neutro,
+            emocaoDireita = Emocao.Feliz,
+            falasVariaveis = GerarFalasPorPersonalidade(p3, "reacao"),
+            respostasJogadorVariaveis = new List<string>
+            {
+                "Certo, acho que agora entendi melhor.",
+                "Vou pensar melhor antes de agir.",
+                "Foi uma situação mais complicada do que parece."
+            },
+            proximoNoSimples = 4
         });
 
-        cenas.Add(new CenaDialogo
+        nos.Add(new NoDialogoVN
         {
-            personagem = "Equipe",
-            fala = "Um membro da equipe não entregou a parte dele e o prazo está acabando. O que você faz?",
-            escolhas = new List<Escolha>()
+            id = 4,
+            tipoNo = TipoNoDialogo.Escolha,
+            personagemFalando = p5,
+            mostrarEsquerda = true,
+            mostrarCentro = true,
+            mostrarDireita = true,
+            personagemEsquerda = p4,
+            personagemCentro = p5,
+            personagemDireita = p6,
+            emocaoEsquerda = Emocao.Neutro,
+            emocaoCentro = Emocao.Raiva,
+            emocaoDireita = Emocao.Neutro,
+            falasVariaveis = GerarFalasPorPersonalidade(p5, "pressao"),
+            opcoes = new List<OpcaoEscolha>
             {
-                new Escolha
+                new OpcaoEscolha
                 {
-                    texto = "Culpar a pessoa na frente de todos",
-                    proximaCena = 6,
+                    textoOpcao = "Tentar organizar todos",
+                    respostaJogador = "Vamos nos organizar e dividir melhor as tarefas.",
+                    deltaLideranca = 2,
+                    deltaComunicacao = 2,
+                    deltaEmpatia = 1,
+                    emocaoJogadorAposEscolha = Emocao.Neutro,
+                    emocaoPersonagemAposEscolha = Emocao.Neutro,
+                    proximoNo = 5
+                },
+                new OpcaoEscolha
+                {
+                    textoOpcao = "Fazer sua parte em silêncio",
+                    respostaJogador = "Vou focar no que eu consigo fazer agora.",
+                    deltaControleEmocional = 1,
+                    proximoNo = 5,
+                    emocaoJogadorAposEscolha = Emocao.Neutro,
+                    emocaoPersonagemAposEscolha = Emocao.Neutro
+                },
+                new OpcaoEscolha
+                {
+                    textoOpcao = "Culpar alguém",
+                    respostaJogador = "Isso aconteceu porque alguém não fez a parte certa.",
                     deltaEmpatia = -2,
                     deltaLideranca = -1,
-                    deltaControle = -1
-                },
-                new Escolha
-                {
-                    texto = "Conversar em particular e reorganizar a equipe",
-                    proximaCena = 6,
-                    deltaEmpatia = 2,
-                    deltaLideranca = 2,
-                    deltaComunicacao = 1
-                },
-                new Escolha
-                {
-                    texto = "Assumir tudo sozinho sem falar nada",
-                    proximaCena = 6,
-                    deltaControle = 1,
-                    deltaComunicacao = -1,
-                    deltaLideranca = -1
+                    emocaoJogadorAposEscolha = Emocao.Raiva,
+                    emocaoPersonagemAposEscolha = Emocao.Raiva,
+                    proximoNo = 5
                 }
             }
         });
 
-        cenas.Add(new CenaDialogo
+        nos.Add(new NoDialogoVN
         {
-            personagem = "Sofia",
-            fala = "Chegamos ao momento decisivo.",
-            escolhas = new List<Escolha>()
+            id = 5,
+            tipoNo = TipoNoDialogo.Escolha,
+            personagemFalando = p6,
+            mostrarEsquerda = true,
+            mostrarCentro = true,
+            mostrarDireita = true,
+            personagemEsquerda = p4,
+            personagemCentro = p5,
+            personagemDireita = p6,
+            emocaoEsquerda = Emocao.Neutro,
+            emocaoCentro = Emocao.Neutro,
+            emocaoDireita = Emocao.Neutro,
+            falasVariaveis = GerarFalasPorPersonalidade(p6, "decisaoFinal"),
+            opcoes = new List<OpcaoEscolha>
             {
-                new Escolha
+                new OpcaoEscolha
                 {
-                    texto = "Continuar",
-                    proximaCena = 7
-                },
-                new Escolha
-                {
-                    texto = "Entendi",
-                    proximaCena = 7
-                },
-                new Escolha
-                {
-                    texto = "Vamos ao final",
-                    proximaCena = 7
-                }
-            }
-        });
-
-        cenas.Add(new CenaDialogo
-        {
-            personagem = "Gerente / Professor / Líder",
-            fala = "O projeto apresentou um erro grave. Como você reage?",
-            escolhas = new List<Escolha>()
-            {
-                new Escolha
-                {
-                    texto = "Culpar outra pessoa",
-                    proximaCena = -1,
-                    deltaEmpatia = -2,
-                    deltaResponsabilidadeOculta = -2
-                },
-                new Escolha
-                {
-                    texto = "Assumir responsabilidade e buscar solução",
-                    proximaCena = -1,
+                    textoOpcao = "Assumir responsabilidade",
+                    respostaJogador = "Eu assumo minha parte e vou ajudar a resolver.",
                     deltaEmpatia = 1,
-                    deltaLideranca = 2,
-                    deltaComunicacao = 1,
-                    deltaResponsabilidadeOculta = 2
-                },
-                new Escolha
-                {
-                    texto = "Chamar todos para resolver juntos",
-                    proximaCena = -1,
-                    deltaEmpatia = 2,
-                    deltaLideranca = 2,
                     deltaComunicacao = 2,
-                    deltaResponsabilidadeOculta = 1
+                    deltaLideranca = 2,
+                    emocaoJogadorAposEscolha = Emocao.Feliz,
+                    emocaoPersonagemAposEscolha = Emocao.Feliz,
+                    proximoNo = -1
+                },
+                new OpcaoEscolha
+                {
+                    textoOpcao = "Resolver sem se comprometer muito",
+                    respostaJogador = "Vamos tentar corrigir isso com calma.",
+                    deltaControleEmocional = 1,
+                    deltaComunicacao = 1,
+                    emocaoJogadorAposEscolha = Emocao.Neutro,
+                    emocaoPersonagemAposEscolha = Emocao.Neutro,
+                    proximoNo = -1
+                },
+                new OpcaoEscolha
+                {
+                    textoOpcao = "Jogar a culpa em outro",
+                    respostaJogador = "Isso não foi erro meu.",
+                    deltaEmpatia = -2,
+                    deltaLideranca = -2,
+                    emocaoJogadorAposEscolha = Emocao.Raiva,
+                    emocaoPersonagemAposEscolha = Emocao.Raiva,
+                    proximoNo = -1
                 }
             }
         });
     }
 
-    void MostrarCenaAtual()
+    List<string> GerarFalasPorPersonalidade(DadosPersonagem personagem, string momento)
     {
-        if (indiceCena < 0 || indiceCena >= cenas.Count)
+        List<string> falas = new List<string>();
+
+        switch (personagem.personalidade)
+        {
+            case PersonalidadePersonagem.Gentil:
+                if (momento == "apresentacao")
+                {
+                    falas.Add("Oi, seja bem-vindo. Espero que você se sinta confortável aqui.");
+                    falas.Add("Que bom te conhecer. Pode contar comigo no que precisar.");
+                }
+                else if (momento == "convivio")
+                {
+                    falas.Add("Cada pessoa aqui tem um jeito diferente, mas com respeito tudo funciona.");
+                    falas.Add("Conviver bem com os outros faz muita diferença no dia a dia.");
+                }
+                else if (momento == "conflito")
+                {
+                    falas.Add("Desculpa, eu estou um pouco sobrecarregado hoje.");
+                    falas.Add("Não queria descontar isso em você, mas estou cansado.");
+                }
+                else if (momento == "reacao")
+                {
+                    falas.Add("Sua reação mostrou bastante maturidade.");
+                    falas.Add("Foi bom ver que você tentou lidar bem com a situação.");
+                }
+                else if (momento == "pressao")
+                {
+                    falas.Add("O prazo está apertado, então precisamos agir juntos.");
+                    falas.Add("Se nos organizarmos bem, ainda dá tempo de resolver.");
+                }
+                else if (momento == "decisaoFinal")
+                {
+                    falas.Add("Agora precisamos decidir como vamos enfrentar esse problema.");
+                    falas.Add("Esse momento mostra muito sobre nossa responsabilidade.");
+                }
+                break;
+
+            case PersonalidadePersonagem.Irritado:
+                if (momento == "apresentacao")
+                {
+                    falas.Add("Tá, então você é a pessoa nova.");
+                    falas.Add("Certo. Só tenta não atrapalhar.");
+                }
+                else if (momento == "convivio")
+                {
+                    falas.Add("Nem todo mundo aqui sabe trabalhar bem em grupo.");
+                    falas.Add("Você vai perceber rápido que algumas pessoas complicam tudo.");
+                }
+                else if (momento == "conflito")
+                {
+                    falas.Add("Hoje já deu tudo errado e eu não estou com paciência.");
+                    falas.Add("Já estou cheio de problema para ainda lidar com isso.");
+                }
+                else if (momento == "reacao")
+                {
+                    falas.Add("Bom... pelo menos você não piorou tudo.");
+                    falas.Add("Você reagiu melhor do que eu esperava.");
+                }
+                else if (momento == "pressao")
+                {
+                    falas.Add("O prazo está acabando e ninguém resolve nada.");
+                    falas.Add("Se continuar assim, isso vai dar errado.");
+                }
+                else if (momento == "decisaoFinal")
+                {
+                    falas.Add("Agora alguém vai ter que responder por isso.");
+                    falas.Add("Não dá mais para fingir que nada aconteceu.");
+                }
+                break;
+
+            default:
+                if (momento == "apresentacao")
+                    falas.Add("Olá, prazer em conhecer você.");
+                else if (momento == "convivio")
+                    falas.Add("Ainda estamos nos adaptando uns aos outros.");
+                else if (momento == "conflito")
+                    falas.Add("Estou tendo um dia complicado.");
+                else if (momento == "reacao")
+                    falas.Add("Foi uma situação interessante.");
+                else if (momento == "pressao")
+                    falas.Add("Precisamos lidar com essa situação.");
+                else if (momento == "decisaoFinal")
+                    falas.Add("Chegou a hora de decidir.");
+                break;
+        }
+
+        return falas;
+    }
+
+    void MostrarNoAtual()
+    {
+        if (indiceNoAtual < 0 || indiceNoAtual >= nos.Count)
         {
             MostrarFinal();
             return;
         }
 
-        CenaDialogo cenaAtual = cenas[indiceCena];
+        NoDialogoVN noAtual = nos[indiceNoAtual];
 
-        textoPersonagem.text = cenaAtual.personagem;
+        textoNomePersonagem.text = noAtual.personagemFalando != null ? noAtual.personagemFalando.nomePersonagem : "";
+        textoFala.text = EscolherTextoAleatorio(noAtual.falasVariaveis);
+        textoRespostaJogador.text = EscolherTextoAleatorio(noAtual.respostasJogadorVariaveis);
 
-        string falaFormatada = cenaAtual.fala;
-        if (!string.IsNullOrEmpty(ambienteEscolhido))
-        {
-            falaFormatada += "\n\nAmbiente atual: " + ambienteEscolhido;
-        }
+        controladorCena.AtualizarPersonagem(controladorCena.imagemEsquerda, noAtual.personagemEsquerda, noAtual.emocaoEsquerda, noAtual.mostrarEsquerda);
+        controladorCena.AtualizarPersonagem(controladorCena.imagemCentro, noAtual.personagemCentro, noAtual.emocaoCentro, noAtual.mostrarCentro);
+        controladorCena.AtualizarPersonagem(controladorCena.imagemDireita, noAtual.personagemDireita, noAtual.emocaoDireita, noAtual.mostrarDireita);
+        controladorCena.AtualizarJogador(aparenciaAtualJogador, emocaoAtualJogador);
 
-        textoFala.text = falaFormatada;
-
-        if (cenaAtual.mostrarReflexao)
+        if (noAtual.tipoNo == TipoNoDialogo.DialogoSimples)
         {
             painelEscolhas.SetActive(false);
-            painelReflexao.SetActive(true);
-            textoReflexao.text = cenaAtual.reflexao;
-            return;
-        }
-
-        painelReflexao.SetActive(false);
-        painelEscolhas.SetActive(true);
-
-        ConfigurarBotao(botaoEscolha1, textoEscolha1, cenaAtual.escolhas, 0);
-        ConfigurarBotao(botaoEscolha2, textoEscolha2, cenaAtual.escolhas, 1);
-        ConfigurarBotao(botaoEscolha3, textoEscolha3, cenaAtual.escolhas, 2);
-    }
-
-    void ConfigurarBotao(Button botao, TMP_Text textoBotao, List<Escolha> escolhas, int indice)
-    {
-        if (indice < escolhas.Count)
-        {
-            botao.gameObject.SetActive(true);
-            textoBotao.text = escolhas[indice].texto;
-            botao.onClick.RemoveAllListeners();
-            Escolha escolhaAtual = escolhas[indice];
-            botao.onClick.AddListener(() => ProcessarEscolha(escolhaAtual));
+            botaoContinuar.gameObject.SetActive(true);
         }
         else
         {
-            botao.gameObject.SetActive(false);
+            painelEscolhas.SetActive(true);
+            botaoContinuar.gameObject.SetActive(false);
+
+            ConfigurarBotaoEscolha(botaoEscolha1, textoEscolha1, noAtual.opcoes, 0);
+            ConfigurarBotaoEscolha(botaoEscolha2, textoEscolha2, noAtual.opcoes, 1);
+            ConfigurarBotaoEscolha(botaoEscolha3, textoEscolha3, noAtual.opcoes, 2);
         }
     }
 
-    void ProcessarEscolha(Escolha escolha)
+    void ConfigurarBotaoEscolha(Button botao, TMP_Text texto, List<OpcaoEscolha> opcoes, int indice)
     {
-        empatia += escolha.deltaEmpatia;
-        comunicacao += escolha.deltaComunicacao;
-        controleEmocional += escolha.deltaControle;
-        lideranca += escolha.deltaLideranca;
-
-        if (!string.IsNullOrEmpty(escolha.ambiente))
+        if (indice >= opcoes.Count)
         {
-            ambienteEscolhido = escolha.ambiente;
+            botao.gameObject.SetActive(false);
+            return;
         }
 
-        if (!string.IsNullOrEmpty(escolha.nomePersonagemRelacao))
-        {
-            if (!relacoes.ContainsKey(escolha.nomePersonagemRelacao))
-                relacoes[escolha.nomePersonagemRelacao] = 0;
+        botao.gameObject.SetActive(true);
+        texto.text = opcoes[indice].textoOpcao;
+        botao.onClick.RemoveAllListeners();
+        botao.onClick.AddListener(() => EscolherOpcao(opcoes[indice]));
+    }
 
-            relacoes[escolha.nomePersonagemRelacao] += escolha.deltaRelacao;
-        }
+    void ContinuarDialogoSimples()
+    {
+        NoDialogoVN noAtual = nos[indiceNoAtual];
+        indiceNoAtual = noAtual.proximoNoSimples;
+        MostrarNoAtual();
+    }
 
-        if (escolha.proximaCena == -1)
+    void EscolherOpcao(OpcaoEscolha opcao)
+    {
+        empatia += opcao.deltaEmpatia;
+        comunicacao += opcao.deltaComunicacao;
+        controleEmocional += opcao.deltaControleEmocional;
+        lideranca += opcao.deltaLideranca;
+
+        emocaoAtualJogador = opcao.emocaoJogadorAposEscolha;
+        textoRespostaJogador.text = opcao.respostaJogador;
+
+        if (opcao.proximoNo == -1)
         {
             MostrarFinal();
             return;
         }
 
-        indiceCena = escolha.proximaCena;
-        MostrarCenaAtual();
-    }
-
-    void ContinuarDepoisReflexao()
-    {
-        painelReflexao.SetActive(false);
-        indiceCena = cenas[indiceCena].proximaCenaAposReflexao;
-        MostrarCenaAtual();
+        indiceNoAtual = opcao.proximoNo;
+        MostrarNoAtual();
     }
 
     void MostrarFinal()
     {
         painelDialogo.SetActive(false);
         painelEscolhas.SetActive(false);
-        painelReflexao.SetActive(false);
         painelFinal.SetActive(true);
-
-        string perfil = DefinirPerfilFinal();
 
         textoFinal.text =
             "Resultado Final\n\n" +
             "Jogador: " + nomeJogador + "\n" +
-            "Ambiente escolhido: " + ambienteEscolhido + "\n\n" +
+            "Gênero: " + generoJogador + "\n" +
+            "Ambiente: " + ambienteAtual + "\n\n" +
             "Empatia: " + empatia + "\n" +
             "Comunicação: " + comunicacao + "\n" +
             "Controle Emocional: " + controleEmocional + "\n" +
             "Liderança: " + lideranca + "\n\n" +
-            "Perfil identificado:\n" + perfil;
+            "Perfil: " + GerarPerfil() + "\n\n" +
+            "Áreas indicadas:\n" + GerarAreas();
     }
 
-    string DefinirPerfilFinal()
+    string GerarPerfil()
     {
-        if (empatia >= 4 && comunicacao >= 3)
-        {
-            return "Final colaborativo: você tende a ouvir, compreender os outros e buscar soluções em conjunto.";
-        }
+        if (empatia >= 4 && comunicacao >= 4)
+            return "Perfil colaborativo e comunicativo.";
 
-        if (lideranca >= 3 && controleEmocional >= 2)
-        {
-            return "Final racional: você demonstra boa tomada de decisão e postura diante de problemas.";
-        }
+        if (lideranca >= 4 && controleEmocional >= 3)
+            return "Perfil de liderança e tomada de decisão.";
 
         if (empatia < 0 || controleEmocional < 0)
-        {
-            return "Final conflituoso: suas escolhas mostraram dificuldade em lidar com emoções e conflitos.";
-        }
+            return "Perfil com dificuldade maior em lidar com conflitos emocionais.";
 
-        return "Final neutro: você evitou confrontos diretos, mas pode precisar se posicionar melhor em situações importantes.";
+        return "Perfil equilibrado com pontos a desenvolver.";
+    }
+
+    string GerarAreas()
+    {
+        List<string> areas = new List<string>();
+
+        if (empatia >= 4)
+            areas.Add("- Psicologia, Recursos Humanos, Assistência Social");
+
+        if (comunicacao >= 4)
+            areas.Add("- Comunicação, Ensino, Atendimento, Marketing");
+
+        if (lideranca >= 4)
+            areas.Add("- Administração, Gestão, Coordenação");
+
+        if (controleEmocional >= 4)
+            areas.Add("- Mediação, Gestão de Crises, Liderança sob pressão");
+
+        if (areas.Count == 0)
+            areas.Add("- Desenvolvimento geral de competências socioemocionais");
+
+        return string.Join("\n", areas);
+    }
+
+    string EscolherTextoAleatorio(List<string> lista)
+    {
+        if (lista == null || lista.Count == 0)
+            return "";
+
+        return lista[Random.Range(0, lista.Count)];
     }
 
     void ReiniciarJogo()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
-}
-
-[System.Serializable]
-public class CenaDialogo
-{
-    public string personagem;
-    [TextArea(3, 8)]
-    public string fala;
-    public List<Escolha> escolhas = new List<Escolha>();
-
-    public bool mostrarReflexao = false;
-    [TextArea(2, 5)]
-    public string reflexao;
-    public int proximaCenaAposReflexao = -1;
-}
-
-[System.Serializable]
-public class Escolha
-{
-    public string texto;
-    public int proximaCena;
-
-    public int deltaEmpatia;
-    public int deltaComunicacao;
-    public int deltaControle;
-    public int deltaLideranca;
-
-    public int deltaRelacao;
-    public string nomePersonagemRelacao;
-
-    public string ambiente;
-
-    public int deltaResponsabilidadeOculta;
 }
