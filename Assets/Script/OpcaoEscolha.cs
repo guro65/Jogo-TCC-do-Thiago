@@ -26,13 +26,9 @@ public class NoDialogoVN
 
     [Header("Quem fala")]
     public DadosPersonagem personagemFalando;
-    public Emocao emocaoPersonagem = Emocao.Neutro;
+    public Emocao emocaoPersonagemFalando = Emocao.Neutro;
 
-    [Header("Posição na tela")]
-    public bool mostrarEsquerda;
-    public bool mostrarCentro;
-    public bool mostrarDireita;
-
+    [Header("Quem aparece na cena")]
     public DadosPersonagem personagemEsquerda;
     public DadosPersonagem personagemCentro;
     public DadosPersonagem personagemDireita;
@@ -41,16 +37,20 @@ public class NoDialogoVN
     public Emocao emocaoCentro = Emocao.Neutro;
     public Emocao emocaoDireita = Emocao.Neutro;
 
-    [Header("Texto")]
+    public bool mostrarEsquerda = true;
+    public bool mostrarCentro = true;
+    public bool mostrarDireita = true;
+
+    [Header("Texto do NPC")]
     [TextArea(2, 5)]
     public List<string> falasVariaveis = new List<string>();
 
-    [Header("Resposta visual do jogador")]
+    [Header("Texto visual do jogador")]
     public List<string> respostasJogadorVariaveis = new List<string>();
 
     [Header("Escolhas")]
     public List<OpcaoEscolha> opcoes = new List<OpcaoEscolha>();
 
-    [Header("Próximo nó")]
+    [Header("Fluxo")]
     public int proximoNoSimples = -1;
 }

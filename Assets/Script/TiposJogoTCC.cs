@@ -8,8 +8,9 @@ public enum TipoAmbiente
 
 public enum GeneroJogador
 {
-    Feminino,
+    Nada,
     Masculino,
+    Feminino,
     NaoDefinido
 }
 
