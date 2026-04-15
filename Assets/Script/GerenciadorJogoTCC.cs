@@ -16,6 +16,13 @@ public class GerenciadorJogoTCC : MonoBehaviour
     public GameObject painelEscolhas;
     public GameObject painelFinal;
 
+    [Header("Áudio")]
+    public AudioSource fonteAudio;
+    public AudioClip musicaInicio;
+    public AudioClip musicaFaculdade;
+    public AudioClip musicaTrabalho;
+    public AudioClip musicaGrupoAmigos;
+
     [Header("Fundo")]
     public GameObject fundo;
 
@@ -98,6 +105,8 @@ public class GerenciadorJogoTCC : MonoBehaviour
         if (botaoGrupoAmigos != null) botaoGrupoAmigos.onClick.AddListener(() => SelecionarAmbiente(TipoAmbiente.GrupoDeAmigos));
         if (botaoContinuar != null) botaoContinuar.onClick.AddListener(ContinuarDialogoSimples);
         if (botaoReiniciar != null) botaoReiniciar.onClick.AddListener(ReiniciarJogo);
+
+        TocarMusicaInicio();
     }
 
     void AtivarSomentePainel(GameObject painelPrincipal)
@@ -178,20 +187,60 @@ public class GerenciadorJogoTCC : MonoBehaviour
         AtualizarFundoPorAmbiente();
 
         if (fundo != null) fundo.SetActive(true);
+
         if (painelDadosIniciais != null) painelDadosIniciais.SetActive(false);
         if (painelEscolhaAmbiente != null) painelEscolhaAmbiente.SetActive(false);
         if (painelInicio != null) painelInicio.SetActive(false);
+
+        if (painelFinal != null) painelFinal.SetActive(false);
         if (painelDialogo != null) painelDialogo.SetActive(true);
         if (painelEscolhas != null) painelEscolhas.SetActive(false);
-        if (painelFinal != null) painelFinal.SetActive(false);
 
         if (textoAmbiente != null)
             textoAmbiente.text = "Ambiente: " + NomeAmbiente(ambienteAtual);
+
+        TocarMusicaAmbiente();
 
         MontarRoteiroBaseDoAmbiente();
         indiceNoAtual = 0;
 
         MostrarNoAtual();
+    }
+
+    void TocarMusica(AudioClip musica)
+    {
+        if (fonteAudio == null || musica == null)
+            return;
+
+        if (fonteAudio.clip == musica && fonteAudio.isPlaying)
+            return;
+
+        fonteAudio.Stop();
+        fonteAudio.clip = musica;
+        fonteAudio.Play();
+    }
+
+    void TocarMusicaInicio()
+    {
+        TocarMusica(musicaInicio);
+    }
+
+    void TocarMusicaAmbiente()
+    {
+        switch (ambienteAtual)
+        {
+            case TipoAmbiente.Faculdade:
+                TocarMusica(musicaFaculdade);
+                break;
+
+            case TipoAmbiente.Trabalho:
+                TocarMusica(musicaTrabalho);
+                break;
+
+            case TipoAmbiente.GrupoDeAmigos:
+                TocarMusica(musicaGrupoAmigos);
+                break;
+        }
     }
 
     List<DadosPersonagem> ObterListaDoAmbiente(TipoAmbiente ambiente)
