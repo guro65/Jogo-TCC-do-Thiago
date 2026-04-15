@@ -1,11 +1,29 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum TomResposta
+{
+    Boa,
+    Neutra,
+    Rude
+}
+
 [System.Serializable]
 public class OpcaoEscolha
 {
+    [Header("Texto do botão")]
     public string textoOpcao;
+
+    [Header("Fala real do jogador")]
+    [TextArea(2, 4)]
     public string respostaJogador;
+
+    [Header("Tom da resposta")]
+    public TomResposta tomResposta = TomResposta.Neutra;
+
+    [Header("Reação do NPC depois da resposta")]
+    [TextArea(2, 4)]
+    public string reacaoNPC;
 
     public int deltaEmpatia;
     public int deltaComunicacao;
@@ -45,7 +63,7 @@ public class NoDialogoVN
     [TextArea(2, 5)]
     public List<string> falasVariaveis = new List<string>();
 
-    [Header("Texto visual do jogador")]
+    [Header("Fala do jogador")]
     public List<string> respostasJogadorVariaveis = new List<string>();
 
     [Header("Escolhas")]

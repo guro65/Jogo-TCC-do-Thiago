@@ -91,6 +91,10 @@ public class GerenciadorJogoTCC : MonoBehaviour
     private List<NoDialogoVN> nos = new();
     private int indiceNoAtual;
 
+    private string ultimaRespostaJogador = "";
+    private string ultimaReacaoNPC = "";
+    private bool mostrarRespostaEscolhida = false;
+
     void Start()
     {
         AtivarSomentePainel(painelInicio);
@@ -305,13 +309,18 @@ public class GerenciadorJogoTCC : MonoBehaviour
             emocaoEsquerda = Emocao.Neutro,
             emocaoCentro = Emocao.Feliz,
             emocaoDireita = Emocao.Neutro,
-            falasVariaveis = FalasPorPersonalidade(p1, "introducao"),
+            falasVariaveis = new List<string>
+        {
+            "Oi, você deve ser a pessoa nova daqui, né? Prazer em te conhecer.",
+            "Então você é quem acabou de chegar. Espero que consiga se sentir à vontade por aqui.",
+            "Prazer, eu sou " + p1.nomePersonagem + ". Se precisar de ajuda no começo, pode falar comigo."
+        },
             respostasJogadorVariaveis = new List<string>
-            {
-                "Oi, prazer em conhecer vocês.",
-                "Olá, estou começando agora.",
-                "Espero me adaptar bem."
-            },
+        {
+            "Oi, prazer em conhecer vocês. Ainda estou me acostumando com tudo.",
+            "Olá, estou começando agora, então talvez eu demore um pouco para pegar o ritmo.",
+            "Prazer. Espero conseguir me adaptar bem aqui."
+        },
             proximoNoSimples = 1
         });
 
@@ -326,41 +335,52 @@ public class GerenciadorJogoTCC : MonoBehaviour
             emocaoEsquerda = Emocao.Neutro,
             emocaoCentro = Emocao.Raiva,
             emocaoDireita = Emocao.Neutro,
-            falasVariaveis = FalasPorPersonalidade(p2, "conflitoLeve"),
+            falasVariaveis = new List<string>
+        {
+            "Olha... já vou avisando que hoje não está sendo um dia muito bom pra mim.",
+            "Se eu parecer meio irritado, não leva pro lado pessoal. O dia já começou complicado.",
+            "Não estou no meu melhor humor hoje, então talvez eu acabe sendo mais seco do que o normal."
+        },
             opcoes = new List<OpcaoEscolha>
+        {
+            new OpcaoEscolha
             {
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Perguntar com calma o motivo",
-                    respostaJogador = "Calma, aconteceu alguma coisa?",
-                    deltaEmpatia = 2,
-                    deltaComunicacao = 2,
-                    deltaControleEmocional = 1,
-                    emocaoJogadorAposEscolha = Emocao.Neutro,
-                    emocaoPersonagemAposEscolha = Emocao.Neutro,
-                    proximoNo = 2
-                },
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Ignorar a provocação",
-                    respostaJogador = "Tudo bem, vou deixar isso passar.",
-                    deltaControleEmocional = 1,
-                    deltaComunicacao = -1,
-                    emocaoJogadorAposEscolha = Emocao.Neutro,
-                    emocaoPersonagemAposEscolha = Emocao.Neutro,
-                    proximoNo = 2
-                },
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Responder de forma agressiva",
-                    respostaJogador = "Você não precisa falar assim comigo.",
-                    deltaEmpatia = -2,
-                    deltaControleEmocional = -2,
-                    emocaoJogadorAposEscolha = Emocao.Raiva,
-                    emocaoPersonagemAposEscolha = Emocao.Raiva,
-                    proximoNo = 2
-                }
+                textoOpcao = "Perguntar com calma o motivo",
+                respostaJogador = "Tudo bem... aconteceu alguma coisa? Se quiser falar, eu posso ouvir.",
+                tomResposta = TomResposta.Boa,
+                reacaoNPC = "Foi mal. Eu acabei descontando em você sem querer. É que realmente já aconteceram algumas coisas chatas hoje.",
+                deltaEmpatia = 2,
+                deltaComunicacao = 2,
+                deltaControleEmocional = 1,
+                emocaoJogadorAposEscolha = Emocao.Neutro,
+                emocaoPersonagemAposEscolha = Emocao.Neutro,
+                proximoNo = 2
+            },
+            new OpcaoEscolha
+            {
+                textoOpcao = "Ignorar a provocação",
+                respostaJogador = "Tudo bem. Vou deixar isso passar por enquanto.",
+                tomResposta = TomResposta.Neutra,
+                reacaoNPC = "Certo... obrigado por não transformar isso em um problema maior.",
+                deltaControleEmocional = 1,
+                deltaComunicacao = -1,
+                emocaoJogadorAposEscolha = Emocao.Neutro,
+                emocaoPersonagemAposEscolha = Emocao.Neutro,
+                proximoNo = 2
+            },
+            new OpcaoEscolha
+            {
+                textoOpcao = "Responder de forma agressiva",
+                respostaJogador = "Se você está irritado, isso não te dá direito de falar assim comigo.",
+                tomResposta = TomResposta.Rude,
+                reacaoNPC = "Eu sei que fui grosso, mas você também não precisava responder desse jeito.",
+                deltaEmpatia = -2,
+                deltaControleEmocional = -2,
+                emocaoJogadorAposEscolha = Emocao.Raiva,
+                emocaoPersonagemAposEscolha = Emocao.Raiva,
+                proximoNo = 2
             }
+        }
         });
 
         nos.Add(new NoDialogoVN
@@ -374,13 +394,18 @@ public class GerenciadorJogoTCC : MonoBehaviour
             emocaoEsquerda = Emocao.Neutro,
             emocaoCentro = Emocao.Neutro,
             emocaoDireita = Emocao.Feliz,
-            falasVariaveis = FalasPorPersonalidade(p3, "reacao"),
+            falasVariaveis = new List<string>
+        {
+            "Bom, pelo menos vocês conseguiram conversar sem deixar a situação pior do que já estava.",
+            "Esses primeiros contatos dizem muito sobre como a convivência vai ser daqui pra frente.",
+            "Dá pra perceber bastante coisa pela forma como alguém reage num momento tenso."
+        },
             respostasJogadorVariaveis = new List<string>
-            {
-                "Entendi melhor a situação agora.",
-                "Vou pensar nisso.",
-                "Essa conversa foi mais importante do que parecia."
-            },
+        {
+            "É... eu ainda estou entendendo como lidar com cada pessoa aqui.",
+            "Acho que já deu para perceber que cada um reage de um jeito diferente.",
+            "Essa conversa me fez prestar mais atenção na forma como eu respondo."
+        },
             proximoNoSimples = 3
         });
 
@@ -395,40 +420,51 @@ public class GerenciadorJogoTCC : MonoBehaviour
             emocaoEsquerda = Emocao.Neutro,
             emocaoCentro = Emocao.Raiva,
             emocaoDireita = Emocao.Neutro,
-            falasVariaveis = FalasPorPersonalidade(p4, "pressao"),
+            falasVariaveis = new List<string>
+        {
+            "Temos um problema: uma parte importante do que precisava ser feito ainda não ficou pronta e o tempo está acabando.",
+            "A situação apertou. O prazo está muito perto e ainda falta uma parte essencial para finalizar tudo.",
+            "Se a gente não se organizar agora, isso pode virar um problema bem maior em pouco tempo."
+        },
             opcoes = new List<OpcaoEscolha>
+        {
+            new OpcaoEscolha
             {
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Organizar todos para resolver",
-                    respostaJogador = "Vamos nos organizar e dividir as responsabilidades.",
-                    deltaLideranca = 2,
-                    deltaComunicacao = 2,
-                    deltaEmpatia = 1,
-                    emocaoJogadorAposEscolha = Emocao.Neutro,
-                    emocaoPersonagemAposEscolha = Emocao.Neutro,
-                    proximoNo = 4
-                },
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Focar só na sua parte",
-                    respostaJogador = "Vou resolver o que está comigo primeiro.",
-                    deltaControleEmocional = 1,
-                    emocaoJogadorAposEscolha = Emocao.Neutro,
-                    emocaoPersonagemAposEscolha = Emocao.Neutro,
-                    proximoNo = 4
-                },
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Culpar alguém pela falha",
-                    respostaJogador = "Isso aconteceu porque alguém errou.",
-                    deltaEmpatia = -2,
-                    deltaLideranca = -1,
-                    emocaoJogadorAposEscolha = Emocao.Raiva,
-                    emocaoPersonagemAposEscolha = Emocao.Raiva,
-                    proximoNo = 4
-                }
+                textoOpcao = "Organizar todos para resolver",
+                respostaJogador = "Em vez de ficar apontando culpa agora, acho melhor a gente dividir o que falta e tentar resolver juntos.",
+                tomResposta = TomResposta.Boa,
+                reacaoNPC = "Essa foi uma boa ideia. Se cada um assumir uma parte, ainda dá pra consertar a situação.",
+                deltaLideranca = 2,
+                deltaComunicacao = 2,
+                deltaEmpatia = 1,
+                emocaoJogadorAposEscolha = Emocao.Neutro,
+                emocaoPersonagemAposEscolha = Emocao.Neutro,
+                proximoNo = 4
+            },
+            new OpcaoEscolha
+            {
+                textoOpcao = "Focar só na sua parte",
+                respostaJogador = "Eu vou garantir pelo menos a minha parte primeiro. Depois vejo no que mais consigo ajudar.",
+                tomResposta = TomResposta.Neutra,
+                reacaoNPC = "Faz sentido querer garantir o que está com você, mas talvez a gente precise pensar mais como grupo agora.",
+                deltaControleEmocional = 1,
+                emocaoJogadorAposEscolha = Emocao.Neutro,
+                emocaoPersonagemAposEscolha = Emocao.Neutro,
+                proximoNo = 4
+            },
+            new OpcaoEscolha
+            {
+                textoOpcao = "Culpar alguém pela falha",
+                respostaJogador = "Se estamos nessa situação, é porque alguém não fez a própria parte direito.",
+                tomResposta = TomResposta.Rude,
+                reacaoNPC = "Ficar culpando alguém agora só vai aumentar a tensão. Isso não resolve o que ainda precisa ser feito.",
+                deltaEmpatia = -2,
+                deltaLideranca = -1,
+                emocaoJogadorAposEscolha = Emocao.Raiva,
+                emocaoPersonagemAposEscolha = Emocao.Raiva,
+                proximoNo = 4
             }
+        }
         });
 
         nos.Add(new NoDialogoVN
@@ -442,41 +478,52 @@ public class GerenciadorJogoTCC : MonoBehaviour
             emocaoEsquerda = Emocao.Neutro,
             emocaoCentro = Emocao.Neutro,
             emocaoDireita = Emocao.Neutro,
-            falasVariaveis = FalasPorPersonalidade(p6, "decisaoFinal"),
+            falasVariaveis = new List<string>
+        {
+            "No fim das contas, precisamos decidir qual postura vamos tomar diante do erro que aconteceu.",
+            "Agora não tem mais como adiar: alguém vai precisar se posicionar sobre o que deu errado.",
+            "A forma como isso for resolvido agora vai dizer muito sobre responsabilidade e trabalho em equipe."
+        },
             opcoes = new List<OpcaoEscolha>
+        {
+            new OpcaoEscolha
             {
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Assumir responsabilidade",
-                    respostaJogador = "Eu assumo minha parte e quero ajudar a resolver.",
-                    deltaEmpatia = 1,
-                    deltaComunicacao = 2,
-                    deltaLideranca = 2,
-                    emocaoJogadorAposEscolha = Emocao.Feliz,
-                    emocaoPersonagemAposEscolha = Emocao.Feliz,
-                    proximoNo = -1
-                },
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Tentar resolver sem se expor muito",
-                    respostaJogador = "Vamos corrigir isso com calma.",
-                    deltaControleEmocional = 1,
-                    deltaComunicacao = 1,
-                    emocaoJogadorAposEscolha = Emocao.Neutro,
-                    emocaoPersonagemAposEscolha = Emocao.Neutro,
-                    proximoNo = -1
-                },
-                new OpcaoEscolha
-                {
-                    textoOpcao = "Jogar a culpa em outra pessoa",
-                    respostaJogador = "Isso não foi erro meu.",
-                    deltaEmpatia = -2,
-                    deltaLideranca = -2,
-                    emocaoJogadorAposEscolha = Emocao.Raiva,
-                    emocaoPersonagemAposEscolha = Emocao.Raiva,
-                    proximoNo = -1
-                }
+                textoOpcao = "Assumir responsabilidade",
+                respostaJogador = "Eu reconheço minha parte nisso e quero ajudar a corrigir o que for necessário.",
+                tomResposta = TomResposta.Boa,
+                reacaoNPC = "Assumir a responsabilidade desse jeito mostra maturidade. Isso ajuda muito mais do que tentar escapar do problema.",
+                deltaEmpatia = 1,
+                deltaComunicacao = 2,
+                deltaLideranca = 2,
+                emocaoJogadorAposEscolha = Emocao.Feliz,
+                emocaoPersonagemAposEscolha = Emocao.Feliz,
+                proximoNo = -1
+            },
+            new OpcaoEscolha
+            {
+                textoOpcao = "Tentar resolver sem se expor muito",
+                respostaJogador = "Prefiro focar em resolver o problema agora e depois a gente vê com calma o que aconteceu.",
+                tomResposta = TomResposta.Neutra,
+                reacaoNPC = "Não é a resposta mais direta, mas pelo menos você ainda está tentando contribuir para a solução.",
+                deltaControleEmocional = 1,
+                deltaComunicacao = 1,
+                emocaoJogadorAposEscolha = Emocao.Neutro,
+                emocaoPersonagemAposEscolha = Emocao.Neutro,
+                proximoNo = -1
+            },
+            new OpcaoEscolha
+            {
+                textoOpcao = "Jogar a culpa em outra pessoa",
+                respostaJogador = "Eu não tenho culpa disso. O problema começou por causa do erro de outra pessoa.",
+                tomResposta = TomResposta.Rude,
+                reacaoNPC = "Tentar jogar a culpa em alguém agora só piora a confiança entre todo mundo. Isso dificilmente ajuda a resolver de verdade.",
+                deltaEmpatia = -2,
+                deltaLideranca = -2,
+                emocaoJogadorAposEscolha = Emocao.Raiva,
+                emocaoPersonagemAposEscolha = Emocao.Raiva,
+                proximoNo = -1
             }
+        }
         });
     }
 
@@ -567,8 +614,20 @@ public class GerenciadorJogoTCC : MonoBehaviour
 
         NoDialogoVN noAtual = nos[indiceNoAtual];
 
-        string falaNPC = EscolherTextoAleatorio(noAtual.falasVariaveis);
-        string falaJogador = EscolherTextoAleatorio(noAtual.respostasJogadorVariaveis);
+        string falaNPC;
+        string falaJogador;
+
+        if (mostrarRespostaEscolhida)
+        {
+            falaJogador = ultimaRespostaJogador;
+            falaNPC = ultimaReacaoNPC;
+            mostrarRespostaEscolhida = false;
+        }
+        else
+        {
+            falaNPC = EscolherTextoAleatorio(noAtual.falasVariaveis);
+            falaJogador = EscolherTextoAleatorio(noAtual.respostasJogadorVariaveis);
+        }
 
         bool npcTemFala = !string.IsNullOrWhiteSpace(falaNPC);
         bool jogadorTemFala = !string.IsNullOrWhiteSpace(falaJogador);
@@ -657,10 +716,9 @@ public class GerenciadorJogoTCC : MonoBehaviour
 
         emocaoAtualJogador = opcao.emocaoJogadorAposEscolha;
 
-        if (caixaNomeJogador != null) caixaNomeJogador.SetActive(true);
-        if (textoNomeJogador != null) textoNomeJogador.text = nomeJogador;
-        if (textoFalaJogador != null) textoFalaJogador.text = opcao.respostaJogador;
-        if (textoFalaJogador != null) textoFalaJogador.gameObject.SetActive(true);
+        ultimaRespostaJogador = opcao.respostaJogador;
+        ultimaReacaoNPC = opcao.reacaoNPC;
+        mostrarRespostaEscolhida = true;
 
         if (opcao.proximoNo == -1)
         {
@@ -710,16 +768,16 @@ public class GerenciadorJogoTCC : MonoBehaviour
     {
         List<string> areas = new();
 
-        if (empatia >= 4)
+        if (empatia >= 2)
             areas.Add("- Psicologia, Recursos Humanos, Assistência Social");
 
-        if (comunicacao >= 4)
+        if (comunicacao >= 2)
             areas.Add("- Comunicação, Ensino, Atendimento, Marketing");
 
-        if (lideranca >= 4)
+        if (lideranca >= 2)
             areas.Add("- Administração, Gestão, Coordenação");
 
-        if (controleEmocional >= 4)
+        if (controleEmocional >= 2)
             areas.Add("- Mediação, Gestão de Crises, Liderança sob pressão");
 
         if (areas.Count == 0)
