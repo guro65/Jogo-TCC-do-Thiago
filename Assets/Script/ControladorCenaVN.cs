@@ -47,4 +47,12 @@ public class ControladorCenaVN : MonoBehaviour
         if (imagemDireita != null)
             imagemDireita.color = (falante == direita) ? corFalando : corNaoFalando;
     }
+
+    public void EsconderTodos()
+    {
+        if (imagemEsquerda != null) imagemEsquerda.gameObject.SetActive(false);
+        if (imagemCentro != null) imagemCentro.gameObject.SetActive(false);
+        if (imagemDireita != null) imagemDireita.gameObject.SetActive(false);
+        if (imagemJogador != null) imagemJogador.gameObject.SetActive(false);
+    }
 }

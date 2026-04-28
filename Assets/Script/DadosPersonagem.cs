@@ -5,12 +5,15 @@ public class DadosPersonagem : MonoBehaviour
     [Header("Informações")]
     public string nomePersonagem;
     public int idade;
+
     [TextArea(2, 5)]
     public string descricaoPersonalidade;
 
-    [Header("Configuração")]
+    [Header("Cargo na empresa de TI")]
+    public string cargoOuFuncao;
+
+    [Header("Personalidade")]
     public PersonalidadePersonagem personalidade;
-    public TipoAmbiente ambiente;
 
     [Header("Sprites por emoção")]
     public Sprite spriteFeliz;
@@ -23,8 +26,10 @@ public class DadosPersonagem : MonoBehaviour
         {
             case Emocao.Feliz:
                 return spriteFeliz;
+
             case Emocao.Raiva:
                 return spriteRaiva;
+
             default:
                 return spriteNeutro;
         }

@@ -1,11 +1,3 @@
-public enum TipoAmbiente
-{
-    Nenhum,
-    Faculdade,
-    Trabalho,
-    GrupoDeAmigos
-}
-
 public enum GeneroJogador
 {
     Nada,
@@ -38,4 +30,20 @@ public enum TipoNoDialogo
 {
     DialogoSimples,
     Escolha
+}
+
+public enum FaseProfissional
+{
+    FacilJunior,
+    MedioPleno,
+    DificilSenior
+}
+
+public enum CategoriaSoftSkill
+{
+    Comunicacao,
+    TrabalhoEquipe,
+    ResolucaoProblemas,
+    Adaptabilidade,
+    Empatia
 }

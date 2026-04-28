@@ -13,8 +13,10 @@ public class AparenciaJogador
         {
             case Emocao.Feliz:
                 return spriteFeliz;
+
             case Emocao.Raiva:
                 return spriteRaiva;
+
             default:
                 return spriteNeutro;
         }

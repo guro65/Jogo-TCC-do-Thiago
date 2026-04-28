@@ -21,18 +21,28 @@ public class OpcaoEscolha
     [Header("Tom da resposta")]
     public TomResposta tomResposta = TomResposta.Neutra;
 
-    [Header("Reação do NPC depois da resposta")]
+    [Header("Categoria avaliada")]
+    public CategoriaSoftSkill categoria;
+
+    [Header("Reação do NPC")]
     [TextArea(2, 4)]
     public string reacaoNPC;
 
-    public int deltaEmpatia;
-    public int deltaComunicacao;
-    public int deltaControleEmocional;
-    public int deltaLideranca;
+    [Header("Pontuação da fase")]
+    public int pontosAprovacao;
 
+    [Header("Pontuação por soft skill")]
+    public int deltaComunicacao;
+    public int deltaTrabalhoEquipe;
+    public int deltaResolucaoProblemas;
+    public int deltaAdaptabilidade;
+    public int deltaEmpatia;
+
+    [Header("Emoções após a escolha")]
     public Emocao emocaoJogadorAposEscolha = Emocao.Neutro;
     public Emocao emocaoPersonagemAposEscolha = Emocao.Neutro;
 
+    [Header("Fluxo")]
     public int proximoNo = -1;
 }
 
@@ -44,16 +54,19 @@ public class NoDialogoVN
 
     [Header("Quem fala")]
     public DadosPersonagem personagemFalando;
-    public Emocao emocaoPersonagemFalando = Emocao.Neutro;
 
     [Header("Quem aparece na cena")]
     public DadosPersonagem personagemEsquerda;
     public DadosPersonagem personagemCentro;
     public DadosPersonagem personagemDireita;
 
+    [Header("Emoções dos NPCs")]
     public Emocao emocaoEsquerda = Emocao.Neutro;
     public Emocao emocaoCentro = Emocao.Neutro;
     public Emocao emocaoDireita = Emocao.Neutro;
+
+    [Header("Emoção do jogador durante essa fala")]
+    public Emocao emocaoJogadorDuranteNo = Emocao.Neutro;
 
     public bool mostrarEsquerda = true;
     public bool mostrarCentro = true;
